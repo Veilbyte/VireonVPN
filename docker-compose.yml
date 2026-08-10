@@ -1,0 +1,34 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: vireon
+      POSTGRES_USER: vireon
+      POSTGRES_PASSWORD: vireon
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vireon -d vireon"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    env_file: .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  bot:
+    build: .
+    env_file: .env
+    command: ["python", "-m", "vireon.bot"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
