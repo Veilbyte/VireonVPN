@@ -44,3 +44,7 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
+# B008 is the documented FastAPI dependency-injection pattern. E501 is noisy for
+# embedded Telegram/HTML copy. UP017 is intentionally deferred while SQLite and
+# PostgreSQL datetime normalization share one helper.
+ignore = ["B008", "E501", "UP017"]
