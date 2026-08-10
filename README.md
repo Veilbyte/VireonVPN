@@ -1,160 +1,215 @@
 # Vireon VPN
 
-Vireon is a Telegram-first VPN subscription service. The user-facing product lives in a Telegram bot, while Happ is used as the cross-platform VPN client. This repository contains the Vireon control plane: bot, backend API, subscription feed for Happ, database models, referral logic, support tickets and the first staff web panel.
+Vireon — Telegram-first VPN-сервис. Пользователь взаимодействует с сервисом через Telegram-бота, а Happ используется как кроссплатформенный VPN-клиент. Этот репозиторий содержит управляющую часть Vireon: Telegram-бот, backend API, выдачу подписок для Happ, модели базы данных, логику тарифов и рефералов, поддержку и веб-панель персонала.
 
-> Current release: **v0.1.0 Foundation**. Real VPN nodes and the production SBP/card payment provider are intentionally not required yet.
+> Текущая стабильная версия: **v0.1.0 Foundation**. Реальные VPN-ноды и промышленный приём платежей через СБП/банковские карты пока намеренно не требуются для разработки.
 
-## What works in v0.1.0
+## Что реализовано в v0.1.0
 
-- automatic user creation by Telegram ID;
-- one-time 3-day trial;
-- plans: Mini (3 devices / 59 ₽), Standard (5 / 89 ₽), Max (8 / 125 ₽);
-- 14 / 30 / 90 / 180 day presets plus a custom duration from 3 days;
-- configurable linear price calculation;
-- stable Vireon subscription number and token;
-- Happ-compatible subscription endpoint with `profile-title`, update interval and expiration metadata;
-- VPN-node registry: adding real VLESS/VMess/Trojan/SS/Hysteria links later does not require changing the bot flow;
-- mock payment gateway for development;
-- referral binding and automatic bonus-day calculation;
-- basic support ticket creation;
-- staff bootstrap account with Argon2 password hashing and signed admin session;
-- minimal `/admin` dashboard;
-- PostgreSQL production compose setup and SQLite development fallback.
+- автоматическое создание пользователя по Telegram ID;
+- одноразовый пробный период на 3 дня;
+- тарифы Mini — 3 устройства / 59 ₽, Standard — 5 устройств / 89 ₽, Max — 8 устройств / 125 ₽;
+- готовые сроки 14 / 30 / 90 / 180 дней;
+- произвольный срок подписки от 3 дней;
+- расчёт стоимости подписки;
+- постоянный номер и токен подписки Vireon;
+- endpoint подписки, совместимый с Happ;
+- передача в Happ названия профиля, интервала обновления и срока окончания;
+- реестр VPN-нод, позволяющий позже добавлять реальные конфигурации без изменения пользовательской ссылки;
+- тестовый платёжный шлюз для разработки;
+- привязка рефералов и автоматическое начисление бонусных дней;
+- базовое создание тикетов технической поддержки;
+- модели персонала и журнал аудита;
+- первоначальный аккаунт Developer через переменные окружения;
+- Argon2-хеширование паролей;
+- базовая веб-панель `/admin`;
+- PostgreSQL для основной среды и SQLite как локальный вариант;
+- Docker Compose;
+- автоматические проверки Ruff + pytest в GitHub Actions.
 
-## Architecture
+## Архитектура
 
 ```text
-Telegram user
-    |
-    v
-Vireon Bot -----------+
-                      |
-                      v
-                 Shared domain/services
-                      |
-          +-----------+-----------+
-          |                       |
-          v                       v
-     PostgreSQL              FastAPI / Admin
-                                  |
-                                  v
-                          /s/{subscription_token}
-                                  |
-                                  v
-                                Happ
-                                  |
-                                  v
-                         Enabled VPN node URIs
+Пользователь Telegram
+        |
+        v
+   Vireon Bot ----------------+
+                               |
+                               v
+                     Бизнес-логика Vireon
+                               |
+                   +-----------+-----------+
+                   |                       |
+                   v                       v
+              PostgreSQL             FastAPI / Admin
+                                             |
+                                             v
+                                   /s/{subscription_token}
+                                             |
+                                             v
+                                           Happ
+                                             |
+                                             v
+                                  Активные VPN-конфигурации
 ```
 
-The VPN transport layer is deliberately data-driven. `vpn_nodes.config_uri` stores the connection URI that Happ receives. Until real VPS nodes are purchased, the table can remain empty and the rest of the service is fully developable.
+VPN-слой специально сделан управляемым данными. В `vpn_nodes.config_uri` хранится ссылка конфигурации, которую получает Happ. Пока реальные VPS не куплены, таблица может оставаться пустой, а остальная система продолжает полноценно разрабатываться и тестироваться.
 
-## Quick start
+## Быстрый запуск
 
-### Docker
+### Через Docker
 
 ```bash
 cp .env.example .env
-# Set VIREON_TELEGRAM_BOT_TOKEN and secure admin credentials in .env
+# Заполните VIREON_TELEGRAM_BOT_TOKEN и безопасные данные Developer-аккаунта.
 docker compose up --build
 ```
 
-API: `http://localhost:8000`  
-Swagger: `http://localhost:8000/docs`  
-Admin: `http://localhost:8000/admin`
+После запуска:
 
-### Local Python
+- API: `http://localhost:8000`
+- Swagger: `http://localhost:8000/docs`
+- панель персонала: `http://localhost:8000/admin`
+
+### Локальный запуск Python
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 cp .env.example .env
-# For a no-PostgreSQL local run, set:
-# VIREON_DATABASE_URL=sqlite+aiosqlite:///./vireon.db
+```
+
+Для запуска без PostgreSQL можно временно указать:
+
+```env
+VIREON_DATABASE_URL=sqlite+aiosqlite:///./vireon.db
+```
+
+Запуск API:
+
+```bash
 uvicorn vireon.api:app --reload
 ```
 
-In another terminal:
+В другом терминале:
 
 ```bash
 python -m vireon.bot
 ```
 
-## First developer account
+## Первый Developer-аккаунт
 
-There is **no password embedded in the repository**. To create the initial Developer account on an empty database, set both:
+Реальный пароль владельца **не хранится в репозитории**. На пустой базе первоначальный аккаунт создаётся через переменные окружения:
 
 ```env
-VIREON_BOOTSTRAP_OWNER_USERNAME=your-login
-VIREON_BOOTSTRAP_OWNER_PASSWORD=a-long-unique-password
+VIREON_BOOTSTRAP_OWNER_USERNAME=ваш-логин
+VIREON_BOOTSTRAP_OWNER_PASSWORD=длинный-уникальный-пароль
 ```
 
-On first API startup the password is hashed with Argon2 and stored in the database. Remove the plaintext bootstrap password from the environment afterwards.
+При первом запуске API пароль хешируется Argon2 и сохраняется в БД. После первичной инициализации открытый пароль рекомендуется удалить из окружения.
 
-## Development payment flow
+## Тестовые платежи
 
-`VIREON_PAYMENT_MODE=mock` makes the bot show an explicit `DEV: подтвердить тестовую оплату` button. It exists only to test subscription/referral behavior before a real acquiring provider is selected. Production must switch to a provider implementation and webhook verification.
+Пока используется режим:
 
-## Happ feed
+```env
+VIREON_PAYMENT_MODE=mock
+```
 
-Each Vireon account owns a stable endpoint:
+В этом режиме Telegram-бот показывает кнопку подтверждения тестовой оплаты. Она нужна только для проверки цепочки:
+
+```text
+покупка -> оплата -> подписка -> реферальное начисление -> Happ
+```
+
+Перед публичным запуском mock-провайдер будет заменён на реальный эквайринг с проверенными webhook-событиями.
+
+## Подписка Happ
+
+Каждая подписка Vireon имеет постоянный endpoint:
 
 ```text
 GET /s/{token}
 ```
 
-The response includes profile metadata and then every enabled `vpn_nodes.config_uri`. When no servers exist yet the subscription remains valid but contains no VPN nodes. Once real nodes are added, Happ receives them on the next subscription refresh without issuing a new user link.
+Ответ содержит метаданные профиля и все активные `vpn_nodes.config_uri`. Пока серверов нет, подписка остаётся валидной, но не содержит VPN-конфигураций. После добавления реальных нод Happ получит их при следующем обновлении той же ссылки.
 
-## Product decisions intentionally configurable
+## Настраиваемые продуктовые параметры
 
-A few decisions are not final yet and therefore are not hard-wired:
+Некоторые решения специально пока не зашиты жёстко:
 
-- trial device limit (`VIREON_TRIAL_DEVICE_LIMIT`, currently default `1`);
-- final discounts for 3/6-month purchases;
-- payment provider;
-- Happ limited-link/provider integration;
-- exact countries and VPN transports;
-- traffic/fair-use rules.
+- лимит устройств пробного периода;
+- скидки на 3 и 6 месяцев;
+- конкретный платёжный провайдер;
+- интеграция Happ Limited Links / HWID;
+- страны и VPN-транспорты;
+- политика трафика и fair-use.
 
-## Security notes
+## Безопасность
 
-- Never commit `.env` or real Telegram/payment credentials.
-- The owner password previously discussed outside the repository must not be reused for production.
-- Use a long random `VIREON_JWT_SECRET` in production.
-- Put the API behind HTTPS before using real subscription URLs.
-- The current `create_all()` bootstrap is convenient for v0.1.0; Alembic migrations are planned before production data is introduced.
+- `.env`, реальные токены Telegram и платёжные секреты нельзя коммитить;
+- ранее обсуждавшиеся в чате пароли не должны использоваться в production;
+- в production требуется длинный случайный `VIREON_JWT_SECRET`;
+- публичные subscription URL должны работать только через HTTPS;
+- до появления production-данных необходимо перейти с `create_all()` на миграции Alembic;
+- критические действия персонала должны попадать в `AuditLog`.
 
-## Next milestones
+## Ветки и процесс разработки
 
-### v0.2.0 — Staff & support
-- staff invitations;
-- RBAC permissions;
-- ticket chat with attachments;
-- ticket assignment/escalation/closure and reviews;
-- audit log UI.
+- `main` — стабильное состояние проекта;
+- `develop` — интеграционная ветка текущей разработки;
+- `vX.Y.Z` — отдельная ветка конкретной версии;
+- после завершения версия проходит тесты и Pull Request в `develop`;
+- после стабилизации релиз попадает в `main`.
 
-### v0.3.0 — Billing
-- real SBP/card provider;
-- verified webhooks and idempotency;
-- promo codes and gift subscriptions;
-- notification scheduler.
+## План версий
 
-### v0.4.0 — VPN control plane
-- node CRUD in admin;
-- Happ encrypted/limited links;
-- device registry;
-- node health monitoring;
-- multiple transports and automatic subscription refresh.
+### v0.2.0 — Персонал и техническая поддержка
 
-### v0.5.0 — Analytics & operations
-- dashboard metrics;
-- broadcast segmentation;
-- referral drill-down;
-- server health and incident tools.
+- одноразовые приглашения сотрудников;
+- полноценный RBAC;
+- список сотрудников и управление ролями;
+- очередь тикетов;
+- назначение и передача тикетов;
+- ответы оператора пользователю;
+- эскалация Moderator -> Administrator;
+- закрытие тикетов;
+- отзывы пользователей после закрытия;
+- журнал аудита в веб-панели.
 
-### v1.0.0 — First public release
-- hardened production deployment;
-- real servers and failover;
-- completed billing/support/admin flows;
-- legal pages and operational monitoring.
+### v0.3.0 — Биллинг
+
+- реальный провайдер СБП/банковских карт;
+- проверка и идемпотентность webhook;
+- промокоды;
+- подарочные подписки;
+- планировщик уведомлений.
+
+### v0.4.0 — VPN Control Plane
+
+- управление VPN-нодами через админ-панель;
+- зашифрованные и ограниченные ссылки Happ;
+- реестр устройств;
+- мониторинг состояния нод;
+- несколько транспортов;
+- автоматическое обновление конфигураций.
+
+### v0.5.0 — Аналитика и эксплуатация
+
+- расширенный Dashboard;
+- сегментированные массовые рассылки;
+- подробная реферальная аналитика;
+- мониторинг серверов и инцидентов.
+
+### v1.0.0 — Первый публичный релиз
+
+- production-развёртывание;
+- реальные VPN-серверы и резервирование;
+- законченные биллинг, поддержка и админ-панель;
+- эксплуатационный мониторинг;
+- юридические страницы и пользовательские условия.
+
+## Язык проекта
+
+Документация, README, Issues, Pull Request и внутренние проектные документы Vireon ведутся **на русском языке**.
