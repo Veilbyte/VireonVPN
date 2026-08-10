@@ -164,7 +164,7 @@ async def plan_details(callback: CallbackQuery) -> None:
     plan = PlanCode(callback.data.split(":", 1)[1])
     p = PLANS[plan]
     rows = [
-        [InlineKeyboardButton(text=f"{days} дней · {calculate_price_kopecks(plan, days) // 100} ₽", callback_data=f"buy:{plan.value}:{days}")]
+        [InlineKeyboardButton(text=f"{days} дней · {calculate_price_kopecks(plan, days) / 100:.2f} ₽", callback_data=f"buy:{plan.value}:{days}")]
         for days in PRESET_DAYS
     ]
     rows.append([InlineKeyboardButton(text="Свой срок", callback_data=f"custom:{plan.value}")])
