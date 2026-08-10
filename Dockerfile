@@ -7,8 +7,6 @@ WORKDIR /app
 
 COPY pyproject.toml README.md ./
 COPY src ./src
-COPY templates ./templates
-COPY static ./static
 
 RUN pip install --no-cache-dir .
 
