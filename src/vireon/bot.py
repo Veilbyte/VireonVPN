@@ -15,7 +15,7 @@ from aiogram.utils.deep_linking import create_start_link
 from .config import get_settings
 from .db import SessionLocal, init_db
 from .domain import PLANS, PRESET_DAYS, DomainError, PlanCode, calculate_price_kopecks
-from .models import Payment, User, ensure_utc
+from .models import Payment, ensure_utc
 from .services import (
     activate_trial,
     confirm_mock_payment,
