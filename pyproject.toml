@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vireon-vpn"
+version = "0.1.0"
+description = "Telegram-first VPN subscription service backend and bot"
+readme = "README.md"
+requires-python = ">=3.13"
+license = {text = "Proprietary"}
+authors = [{name = "Vireon"}]
+dependencies = [
+  "fastapi>=0.139,<0.140",
+  "uvicorn[standard]>=0.35,<1",
+  "aiogram>=3.30,<4",
+  "sqlalchemy>=2.0.51,<2.1",
+  "psycopg[binary]>=3.2,<4",
+  "aiosqlite>=0.21,<1",
+  "pydantic-settings>=2.10,<3",
+  "pwdlib[argon2]>=0.2,<1",
+  "PyJWT>=2.10,<3",
+  "python-multipart>=0.0.20,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.4,<10",
+  "pytest-asyncio>=1.2,<2",
+  "httpx>=0.28,<1",
+  "ruff>=0.15,<1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vireon"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+# B008 is the documented FastAPI dependency-injection pattern. E501 is noisy for
+# embedded Telegram/HTML copy. UP017 is intentionally deferred while SQLite and
+# PostgreSQL datetime normalization share one helper.
+ignore = ["B008", "E501", "UP017"]
